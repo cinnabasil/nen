@@ -41,6 +41,12 @@ impl Lexer {
         }
     }
 
+    #[inline(always)]
+    fn tokenize_single_char(&mut self, token: Token) -> Option<Token> {
+        self.advance();
+        return Some(token);
+    }
+
     pub fn next_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
 
@@ -73,21 +79,9 @@ impl Lexer {
                 }
                 return Some(Token::StringLiteral(value));
             },
-            '(' => {
-                let token = Token::OpenParen;
-                self.advance();
-                return Some(token);
-            }, 
-            ')' => {
-                let token = Token::CloseParen;
-                self.advance();
-                return Some(token);
-            }, 
-            ';' => {
-                let token = Token::Semicolon;
-                self.advance();
-                return Some(token);
-            }, 
+            '(' => return self.tokenize_single_char(Token::OpenParen),
+            ')' => return self.tokenize_single_char(Token::CloseParen),
+            ';' => return self.tokenize_single_char(Token::Semicolon), 
             _ => {
                 // TODO: Proper error handling
                 eprintln!("\u{0001}[91m;ERROR\u{0001}[0m; Unexpected character at position {}: '{}'",
