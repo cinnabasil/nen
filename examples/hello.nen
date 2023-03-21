@@ -1,1 +1,3 @@
-print("Hello, world!");
+impure func main() {
+  print("Hello, world!");
+}

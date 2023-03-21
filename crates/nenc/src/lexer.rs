@@ -5,8 +5,15 @@ pub struct Lexer {
 }
 
 #[derive(Debug)]
+pub enum Keyword {
+    Func,
+    Impure
+}
+
+#[derive(Debug)]
 pub enum Token {
     Identifier(String),
+    Keyword(Keyword),
     StringLiteral(String),
     OpenParen,
     CloseParen,
@@ -71,7 +78,11 @@ impl Lexer {
                     value.push(self.input[self.index]);
                     self.index += 1;
                 }
-                return Some(Token::Identifier(value))
+                return match value.as_str() {
+                    "func" => Some(Token::Keyword(Keyword::Func)),
+                    "impure" => Some(Token::Keyword(Keyword::Impure)),
+                    _ => Some(Token::Identifier(value))
+                };
             },
             '"' | '\'' => {
                 let mut value = String::new();
@@ -85,6 +96,7 @@ impl Lexer {
                     value.push(string_character);
                     self.index += 1;
                 }
+
                 return Some(Token::StringLiteral(value));
             },
             '(' => return self.tokenize_single_char(Token::OpenParen),
