@@ -1,6 +1,6 @@
 # nen
 
-__nen__ is a simple programming language writtenin Rust.
+__nen__ is a simple programming language written in Rust.
 
 **IMPORTANT: nen is currently in very early development, and is subject to change without warning.**
 
