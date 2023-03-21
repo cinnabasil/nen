@@ -1,6 +1,7 @@
 use lexer::{Lexer, Token};
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct Parser {
     lexer: Lexer,
     current: Option<Token>
@@ -14,6 +15,14 @@ impl Parser {
         Parser {
             lexer,
             current: next_token
+        }
+    }
+
+    // Use up all tokens and print them
+    pub fn token_drought(&mut self) {
+        while let Some(token) = &self.current {
+            println!("{:?}", token);
+            self.current = self.lexer.next_token();
         }
     }
 }

@@ -12,5 +12,7 @@ pub fn compile(mut readable: impl Read, _options: CompilerOptions) {
     let mut src = String::new();
     readable.read_to_string(&mut src).unwrap();
 
-    let _parser = Parser::new(&src);
+    let mut parser = Parser::new(&src);
+
+    parser.token_drought();
 }
