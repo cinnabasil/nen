@@ -1,1 +1,1 @@
-println("Hello, world!");
+print_hello_world();

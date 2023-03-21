@@ -47,6 +47,14 @@ impl Lexer {
         return Some(token);
     }
 
+    pub fn peek_token(&mut self) -> Option<Token> {
+        let index = self.index;
+        let token = self.next_token();
+        // Reset position
+        self.index = index;
+        return token;
+    }
+
     pub fn next_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
 
@@ -57,9 +65,9 @@ impl Lexer {
         let c = self.input[self.index];
         
         match c {
-            c if c.is_ascii_alphabetic() => {
+            c if c.is_ascii_alphabetic() || c == '_' => {
                 let mut value = String::new();
-                while !self.at_end() && self.input[self.index].is_ascii_alphanumeric() {
+                while !self.at_end() && (self.input[self.index].is_ascii_alphanumeric() || self.input[self.index] == '_') {
                     value.push(self.input[self.index]);
                     self.index += 1;
                 }

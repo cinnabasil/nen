@@ -14,5 +14,5 @@ pub fn compile(mut readable: impl Read, _options: CompilerOptions) {
 
     let mut parser = Parser::new(&src);
 
-    parser.token_drought();
+    println!("{:?}", parser.next_node());
 }
