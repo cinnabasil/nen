@@ -1,0 +1,10 @@
+[package]
+name = "nen"
+version = "0.0.1"
+description = "Nen compiler command-line interface."
+
+[dependencies]
+nenc = { path = "crates/nenc" }
+
+[workspace]
+members = [ "crates/nenc" ]
