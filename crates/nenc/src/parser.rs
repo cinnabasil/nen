@@ -10,7 +10,8 @@ pub struct Parser {
 
 #[derive(Debug)]
 pub enum Expression {
-    FunctionCall(String, Vec<Expression>)
+    FunctionCall(String, Vec<Expression>),
+    StringLiteral(String)
 }
 
 #[derive(Debug)]
@@ -19,6 +20,7 @@ pub enum Statement {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Node {
     Expression(Expression),
     Statement(Statement)
@@ -49,7 +51,20 @@ impl Parser {
         }
     }
 
-    #[allow(dead_code)]
+    fn parse_expression(&mut self) -> Expression {
+        match &self.lexer.next_token() {
+            Some(Token::StringLiteral(s)) => {
+                Expression::StringLiteral(s.to_string())
+            },
+            Some(t) => {
+                todo!("Don't know how to handle token: {t:?}");
+            },
+            None => {
+                todo!("Handle error where expecting expression but nothing found");
+            }
+        }
+    }
+
     pub fn next_node(&mut self) -> Option<Node> {
         self.current = self.lexer.next_token(); 
         match &self.current {
@@ -60,6 +75,20 @@ impl Parser {
                         // Don't handle args yet
                         let function_name = c.to_string();
                         self.expect_token(Token::OpenParen, true);
+
+                        let mut function_args = Vec::<Expression>::new();
+                        
+                        while let Some(t) = self.lexer.peek_token() {
+                            match t {
+                                Token::CloseParen => break,
+                                _ => {
+                                    let expression = self.parse_expression();
+                                    function_args.push(expression);
+                                    self.expect_token(Token::CloseParen, false);
+                                }
+                            }
+                        }
+
                         self.expect_token(Token::CloseParen, true);
                         self.expect_token(Token::Semicolon, true);
 
@@ -67,7 +96,7 @@ impl Parser {
                             Node::Expression(
                                 Expression::FunctionCall(
                                     function_name,
-                                    Vec::<Expression>::new()
+                                    function_args
                                 )
                             )
                         )
