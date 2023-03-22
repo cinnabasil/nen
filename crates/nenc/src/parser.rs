@@ -4,8 +4,7 @@ use lexer::{Lexer, Token, Keyword};
 
 #[derive(Debug)]
 pub struct Parser {
-    lexer: Lexer,
-    current: Option<Token>
+    lexer: Lexer
 }
 
 
@@ -30,11 +29,8 @@ pub enum Statement {
 
 impl Parser {
     pub fn new(input: &str) -> Parser {
-        let lexer = Lexer::new(input);
-
         Parser {
-            lexer,
-            current: None
+            lexer: Lexer::new(input)
         }
     }
 
@@ -167,6 +163,7 @@ impl Parser {
     } 
 
     // Use up all tokens and print them
+    #[allow(dead_code)]
     pub fn token_drought(&mut self) {
         while let Some(token) = self.lexer.next_token() {
             println!("{:?}", token);
