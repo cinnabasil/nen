@@ -1,7 +1,11 @@
+use crate::error::{ErrorLocation, SyntaxError};
+
 #[derive(Debug)]
 pub struct Lexer {
     input: Vec<char>,
-    index: usize
+    index: usize,
+    line: usize,
+    column: usize
 }
 
 #[derive(Debug)]
@@ -27,7 +31,9 @@ impl Lexer {
     pub fn new(input: &str) -> Lexer {
         Lexer {
             input: input.chars().collect::<Vec<char>>(),
-            index: 0
+            index: 0,
+            line: 0,
+            column: 0
         }
     }
 
@@ -108,10 +114,11 @@ impl Lexer {
             '}' => return self.tokenize_single_char(Token::CloseCurly),
             ',' => return self.tokenize_single_char(Token::Comma),
             ';' => return self.tokenize_single_char(Token::Semicolon), 
-            _ => {
-                // TODO: Proper error handling
-                eprintln!("\u{0001}[91m;ERROR\u{0001}[0m; Unexpected character at position {}: '{}'",
-                    self.index, c); 
+            c => {
+                let error = SyntaxError::UnknownStartOfToken(ErrorLocation { line: self.line, column: self.column }, c);
+
+                println!("{error}");
+
                 std::process::exit(1);
             }
         };

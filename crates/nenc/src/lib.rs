@@ -1,3 +1,4 @@
+mod error;
 mod lexer;
 mod parser;
 
@@ -13,6 +14,5 @@ pub fn compile(mut readable: impl Read, _options: CompilerOptions) {
     readable.read_to_string(&mut src).unwrap();
 
     let mut parser = Parser::new(&src);
-
-    println!("{:#?}", parser.parse_program());
+    let _program = parser.parse_program();
 }

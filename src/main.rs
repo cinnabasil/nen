@@ -2,7 +2,7 @@ extern crate nenc;
 
 use std::{ env, path::PathBuf, process::exit, fs::File };
 
-const RED: &str = "\x1B[91m";
+const RED: &str = "\u{001b}[91m";
 const RESET: &str = "\u{001b}[0m";
 
 #[derive(Default)]
