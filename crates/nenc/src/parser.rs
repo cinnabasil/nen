@@ -12,7 +12,7 @@ pub type Program = Vec<Node>;
 
 #[derive(Debug)]
 pub enum Node {
-    FunctionDefinition { name: String, contents: Block }
+    FunctionDefinition { name: String, contents: Block, impure: bool }
 }
 
 pub type Block = Vec<Expr>;
@@ -110,8 +110,14 @@ impl Parser {
         match self.lexer.peek_token() {
             Some(Token::Keyword(Keyword::Impure)) => {
                 self.lexer.next_token();
-                // Ignore impure for now
-                self.parse_node()
+                match self.parse_node() {
+                    Some(Node::FunctionDefinition { name, contents, impure: _ }) => {
+                        Some(Node::FunctionDefinition { name, contents, impure: true })
+                    },
+                    #[allow(unreachable_patterns)]
+                    Some(_) => todo!("Unexpected token after impure"),
+                    None => todo!("Impure by itself!")
+                }
             },
             Some(Token::Keyword(Keyword::Func)) => {
                 self.lexer.next_token();
@@ -139,7 +145,7 @@ impl Parser {
                 self.expect_token(Token::CloseCurly, true);
 
                 if let Token::Identifier(n) = name {
-                    Some(Node::FunctionDefinition { name: n, contents: block })
+                    Some(Node::FunctionDefinition { name: n, contents: block, impure: false })
                 } else {
                     todo!("Unreachable!");
                 }

@@ -1,3 +1,5 @@
 impure func main() {
   print("Hello, world!");
 }
+
+func non_impure() {}
