@@ -17,6 +17,9 @@ pub enum Token {
     StringLiteral(String),
     OpenParen,
     CloseParen,
+    OpenCurly,
+    CloseCurly,
+    Comma,
     Semicolon
 }
 
@@ -101,6 +104,9 @@ impl Lexer {
             },
             '(' => return self.tokenize_single_char(Token::OpenParen),
             ')' => return self.tokenize_single_char(Token::CloseParen),
+            '{' => return self.tokenize_single_char(Token::OpenCurly),
+            '}' => return self.tokenize_single_char(Token::CloseCurly),
+            ',' => return self.tokenize_single_char(Token::Comma),
             ';' => return self.tokenize_single_char(Token::Semicolon), 
             _ => {
                 // TODO: Proper error handling
