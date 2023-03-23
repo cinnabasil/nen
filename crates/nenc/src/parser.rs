@@ -19,12 +19,13 @@ pub type Block = Vec<Expr>;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    FunctionCall { name: String, arguments: Vec<Statement> }
+    FunctionCall { name: String, arguments: Vec<Expr> },
+    StringLiteral(String)
 }
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    StringLiteral(String)
+ 
 }
 
 impl Parser {
@@ -48,7 +49,6 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.lexer.next_token() {
-            Some(Token::StringLiteral(s)) => Some(Statement::StringLiteral(s)),
             Some(_) => todo!("Unexpected token in parse_statement"),
             None => None
         }
@@ -57,16 +57,19 @@ impl Parser {
     fn parse_expr(&mut self) -> Option<Expr> {
         // Only function calls for now
         match self.lexer.next_token() {
+	    Some(Token::StringLiteral(s)) => {
+		Some(Expr::StringLiteral(s))
+	    },
             Some(Token::Identifier(s)) => {
                 match self.lexer.peek_token() {
                     Some(Token::OpenParen) => {
                         self.lexer.next_token();
-                        let mut args = Vec::<Statement>::new();
+                        let mut args = Vec::<Expr>::new();
                         while let Some(tk) = self.lexer.peek_token() {
                             match tk {
                                 Token::CloseParen => break,
                                 _ => {
-                                    if let Some(s) = self.parse_statement() {
+                                    if let Some(s) = self.parse_expr() {
                                         args.push(s);
                                     } else {
                                         // Hit EOF or something else before close bracket!
@@ -83,7 +86,6 @@ impl Parser {
                         }
 
                         self.expect_token(Token::CloseParen, true);
-                        self.expect_token(Token::Semicolon, true);
 
                         Some(Expr::FunctionCall {
                             name: s,
@@ -134,6 +136,7 @@ impl Parser {
                         _ => {
                             if let Some(e) = self.parse_expr() {
                                 block.push(e);
+				self.expect_token(Token::Semicolon, true);
                             } else {
                                 // Hit EOF or something else before close curly!
                                 todo!("Handle unclosed function definition");
