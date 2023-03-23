@@ -1,3 +1,5 @@
+use std::thread::current;
+
 use crate::ir::{IR, Constant, NamespaceElement, Function, IRExpr};
 
 struct BytecodeGenerator {
@@ -116,6 +118,8 @@ pub fn generate_bytecode(ir: IR) -> Vec<u8> {
                         
                         main_code_section.extend(attributes.to_be_bytes());
                         main_code_section.extend((0 as u32).to_be_bytes());
+
+                        current_idx += 1;
                     },
                     Function::UserDefined { arguments: _, body, impure } => {
                         if name == "main" {
