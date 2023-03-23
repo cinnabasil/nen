@@ -1,4 +1,11 @@
 impure func main() {
-  print("String Argument");
-  print("Other Argument");
+  example_function();
+}
+
+impure func example_function() {
+  other_function();
+}
+
+impure func other_function() {
+  print("Hello, world!");
 }
