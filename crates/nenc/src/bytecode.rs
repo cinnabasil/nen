@@ -16,12 +16,12 @@ pub fn generate_bytecode(ir: IR) -> Vec<u8> {
     // [type (0x01)] [string length (4 bytes)] [string]
     
     for constant in ir.constants {
-	match constant {
-	    Constant::StringLiteral(s) => {
-		program.extend(&[0x01]);
-		program.extend([&(s.len() as u32).to_be_bytes(), s.as_bytes()].concat());
-	    }
-	};
+        match constant {
+            Constant::StringLiteral(s) => {
+            program.extend(&[0x01]);
+            program.extend([&(s.len() as u32).to_be_bytes(), s.as_bytes()].concat());
+            }
+        };
     }
 
     // 0x00 0x01 -> Start of main code section
@@ -39,42 +39,43 @@ pub fn generate_bytecode(ir: IR) -> Vec<u8> {
     let mut current_idx: u32 = 0;
     
     for (name, item) in ir.namespace {
-	match item {
-	    NamespaceElement::Variable => todo!("Variables are not implemented yet"),
-	    NamespaceElement::Function(function) => {
-		match function {
-		    Function::ToBeDefined { argument_count: _ } => panic!("Unreachable"),
-		    Function::BuiltIn { arguments: _, impure: _ } => {},
-		    Function::UserDefined { arguments: _, body, impure } => {
-			if name == String::from("main") {
-			    main_function_idx = current_idx;
-			}
+        match item {
+            NamespaceElement::Variable => todo!("Variables are not implemented yet"),
+            NamespaceElement::Function(function) => {
+                match function {
+                    Function::ToBeDefined { argument_count: _ } => panic!("Unreachable"),
+                    Function::BuiltIn { arguments: _, impure: _ } => {},
+                    Function::UserDefined { arguments: _, body, impure } => {
+                        if name == String::from("main") {
+                            main_function_idx = current_idx;
+                        }
 
-			bytecode_namespace.insert(name.clone(), current_idx);
+                        bytecode_namespace.insert(name.clone(), current_idx);
 
-			// Function layout
-			// [name len (4 bytes)] [name] [attributes] [body len (4 bytes)] [body]
-			// attributes (ORed)
-			//     0x01 - impure
+                        // Function layout
+                        // [name len (4 bytes)] [name] [attributes] [body len (4 bytes)] [body]
+                        // attributes (ORed)
+                        //     0x01 - impure
 
-			main_code_section.extend((name.len() as u32).to_be_bytes());
-			main_code_section.extend(name.as_bytes());
+                        main_code_section.extend((name.len() as u32).to_be_bytes());
+                        main_code_section.extend(name.as_bytes());
 
-			let mut attributes: u8 = 0;
-			if impure {
-			    attributes |= 0x01;
-			}
+                        let mut attributes: u8 = 0;
 
-			main_code_section.extend(attributes.to_be_bytes());
+                        if impure {
+                            attributes |= 0x01;
+                        }
 
-			// TODO: Body
-			main_code_section.extend((0 as u32).to_be_bytes());
+                        main_code_section.extend(attributes.to_be_bytes());
 
-			current_idx += 1;
-		    }
-		}
-	    }
-	}
+                        // TODO: Body
+                        main_code_section.extend((0 as u32).to_be_bytes());
+                        
+                        current_idx += 1;
+                    }
+                }
+            }
+        }
     }
 
 
