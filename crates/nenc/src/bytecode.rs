@@ -1,8 +1,61 @@
 use std::collections::HashMap;
 
-use crate::ir::{IR, Constant, NamespaceElement, Function};
+use crate::ir::{IR, Constant, NamespaceElement, Function, IRExpr};
+
+struct BytecodeGenerator {
+    bytecode_namespace: HashMap<String, u32>
+}
+
+impl BytecodeGenerator {
+    fn generate_expr_bytecode(&self, expr: &IRExpr) -> Vec<u8> {
+	let mut bytecode = Vec::<u8>::new();
+
+	match expr {
+	    IRExpr::FunctionCall(name, arguments) => {
+		let idx = match self.bytecode_namespace.get(name) {
+		    Some(idx) => idx,
+		    None => panic!("(hopefully) Unreachable")
+		};
+
+		// Evaluate arguments first
+		for arg in arguments {
+		    bytecode.extend(self.generate_expr_bytecode(arg));
+		}
+		// We need some good way to access these later
+		
+		// Function call is 0x02 and argument is size of function index
+		// in this case, 4 (u32)
+		bytecode.extend(&[0x02]);
+		bytecode.extend(idx.to_be_bytes());
+	    },
+	    IRExpr::StringLiteral(idx) => {
+		// For a string, we push it onto the stack **for now**
+
+		// 0xE4 [constant index]
+		bytecode.extend(&[0xE4]);
+		bytecode.extend(idx.to_be_bytes());
+	    }
+	}
+	
+	bytecode
+    }
+
+    fn generate_function_body_bytecode(&self, body: &Vec<IRExpr>) -> Vec<u8> {
+	let mut bytecode = Vec::<u8>::new();
+
+	for expr in body {
+	    bytecode.extend(self.generate_expr_bytecode(expr));
+	}
+
+	bytecode
+    }
+}
 
 pub fn generate_bytecode(ir: IR) -> Vec<u8> {
+    let mut generator = BytecodeGenerator {
+	bytecode_namespace: HashMap::<String, u32>::new()
+    };
+    
     let mut bytecode = Vec::<u8>::new();
     let mut program = Vec::<u8>::new();
 
@@ -18,8 +71,8 @@ pub fn generate_bytecode(ir: IR) -> Vec<u8> {
     for constant in ir.constants {
         match constant {
             Constant::StringLiteral(s) => {
-            program.extend(&[0x01]);
-            program.extend([&(s.len() as u32).to_be_bytes(), s.as_bytes()].concat());
+		program.extend(&[0x01]);
+		program.extend([&(s.len() as u32).to_be_bytes(), s.as_bytes()].concat());
             }
         };
     }
@@ -34,7 +87,6 @@ pub fn generate_bytecode(ir: IR) -> Vec<u8> {
     // The 4-byte index of the `main` function is output directly after
     // the main code length bytes (and this index is included in that
     // length)
-    let mut bytecode_namespace = HashMap::<String, u32>::new();
     let mut main_function_idx: u32 = 0;
     let mut current_idx: u32 = 0;
     
@@ -50,7 +102,7 @@ pub fn generate_bytecode(ir: IR) -> Vec<u8> {
                             main_function_idx = current_idx;
                         }
 
-                        bytecode_namespace.insert(name.clone(), current_idx);
+                        generator.bytecode_namespace.insert(name.clone(), current_idx);
 
                         // Function layout
                         // [name len (4 bytes)] [name] [attributes] [body len (4 bytes)] [body]
@@ -69,6 +121,8 @@ pub fn generate_bytecode(ir: IR) -> Vec<u8> {
                         main_code_section.extend(attributes.to_be_bytes());
 
                         // TODO: Body
+			let body_code = generator.generate_function_body_bytecode(&body);
+			
                         main_code_section.extend((0 as u32).to_be_bytes());
                         
                         current_idx += 1;
@@ -78,10 +132,9 @@ pub fn generate_bytecode(ir: IR) -> Vec<u8> {
         }
     }
 
-
-
     program.extend((main_code_section.len() as u32).to_be_bytes());
     program.extend(main_function_idx.to_be_bytes());
+    program.extend(main_code_section);
     
     // 4 bytes to indicate program length vvv
     bytecode.extend((program.len() as u32).to_be_bytes());
