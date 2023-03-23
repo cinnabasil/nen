@@ -47,6 +47,7 @@ impl Parser {
         todo!("Handle unexpected token");
     }
 
+    #[allow(dead_code)]
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.lexer.next_token() {
             Some(_) => todo!("Unexpected token in parse_statement"),

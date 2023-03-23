@@ -18,7 +18,9 @@ pub fn compile(mut readable: impl Read, _options: CompilerOptions) {
     let mut parser = Parser::new(&src);
     let program = parser.parse_program();
 
-//    println!("Program {program:#?}");
+//  println!("Program {program:#?}");
 
-    let _intermediate = IR::from(program);
+    let intermediate = IR::from(program);
+
+    println!("{intermediate:#?}");
 }

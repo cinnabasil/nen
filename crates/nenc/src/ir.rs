@@ -1,31 +1,38 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 use crate::parser::{ Program, Node, Expr };
 
+#[derive(Debug)]
 #[allow(dead_code)]
 pub struct IR {
     namespace: HashMap<String, NamespaceElement>,
-    constants: Vec<Constant>
+    constants: Vec<Rc<Constant>>
 }
 
+#[derive(Debug)]
 #[allow(dead_code)]
 enum Constant {
     StringLiteral(String)
 }
 
+#[derive(Debug)]
 #[allow(dead_code)]
 enum Type {
     Void,
     String
 }
 
+#[derive(Debug)]
 struct FunctionArgument (String, Type);
 
+#[derive(Debug)]
 #[allow(dead_code)]
 enum NamespaceElement {
     Variable,
     Function(Function)
 }
 
+#[derive(Debug)]
 #[allow(dead_code)]
 enum Function {
     UserDefined { arguments: Vec<FunctionArgument>, body: Vec<IRExpr>, impure: bool },
@@ -37,7 +44,7 @@ enum Function {
     // to them.
     // If any functions are still Function::ToBeDefined at the end of IR generation,
     // a reference error will be returned
-    ToBeDefined
+    ToBeDefined { argument_count: usize }
 }
 
 // We have different types here than the AST (see crate::parser::Expr vs IRExpr)
@@ -46,26 +53,54 @@ enum Function {
 // For example, a function call containing a string literal would actually be a
 // reference into the constant 'pool' (IR.constants) rather than how it is represented
 // in crate::parser
+#[derive(Debug)]
 enum IRExpr {
-    FunctionCall(String)
+    FunctionCall(String, Vec<IRExpr>),
+    StringLiteral(Rc<Constant>)
 }
 
 impl IR {
     fn handle_expr(&mut self, expr: &Expr) -> IRExpr {
 	match expr {
-	    Expr::FunctionCall { name, arguments: _ } => {
+	    Expr::FunctionCall { name, arguments: ast_arguments } => {
 		// Check if function exists
 		if let Some(defined) = self.namespace.get(name) {
 		    match defined {
 			NamespaceElement::Variable => todo!("Can't call a variable"),
 			// If it's a function, great!
-			NamespaceElement::Function(_) => {}
+			NamespaceElement::Function(f) => {
+			    match f {
+				Function::ToBeDefined { argument_count } => {
+				    if *argument_count != ast_arguments.len() {
+					todo!("Wrong number of arguments to function {name}");
+				    }
+				},
+				Function::BuiltIn { arguments, impure: _ } | Function::UserDefined { arguments, body: _, impure: _ } => {
+				    if arguments.len() != ast_arguments.len() {
+					todo!("Wrong number of arguments to function {name}");
+				    }
+				}
+			    }
+			}
 		    }
 		} else {
-		    self.namespace.insert(name.clone(), NamespaceElement::Function(Function::ToBeDefined));
+		    self.namespace.insert(name.clone(), NamespaceElement::Function(Function::ToBeDefined { argument_count: ast_arguments.len() }));
+		}
+
+		let mut arguments = Vec::<IRExpr>::new();
+
+		for argument in ast_arguments.iter() {
+		    arguments.push(self.handle_expr(argument));
 		}
 		
-		return IRExpr::FunctionCall(name.clone());
+		return IRExpr::FunctionCall(name.clone(), arguments);
+	    },
+	    Expr::StringLiteral(s) => {
+		let constant = Rc::new(Constant::StringLiteral(s.to_string()));
+
+		self.constants.push(Rc::clone(&constant));
+		
+		return IRExpr::StringLiteral(Rc::clone(&constant));
 	    },
 	    #[allow(unreachable_patterns)]
 	    _ => todo!("Unreachable!")
@@ -82,7 +117,7 @@ impl IR {
 			    match function {
 				// If the function has been referenced before, then we don't care that it is technically
 				// in the namespace, as this is expected
-				Function::ToBeDefined => {},
+				Function::ToBeDefined { argument_count: _ } => {},
 				_ => todo!("Function {name} already defined!")
 			    };
 			}
@@ -119,7 +154,7 @@ impl IR {
 
         IR {
             namespace,
-	    constants: Vec::<Constant>::new()
+	    constants: Vec::<Rc<Constant>>::new()
         }
     }
 
@@ -130,7 +165,8 @@ impl IR {
 		NamespaceElement::Variable => continue,
 		NamespaceElement::Function(function) => {
 		    match function {
-			Function::ToBeDefined => todo!("Function {name} was called, but is not defined anywhere"),
+			Function::ToBeDefined { argument_count: _ } =>
+			    todo!("Function {name} was called, but is not defined anywhere"),
 			_ => continue
 		    }
 		}
