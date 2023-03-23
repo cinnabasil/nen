@@ -1,3 +1,4 @@
 impure func main() {
   print("String Argument");
+  print("Other Argument");
 }

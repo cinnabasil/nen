@@ -1,9 +1,13 @@
+mod bytecode;
 mod error;
 mod ir;
 mod lexer;
 mod parser;
 
-use std::io::Read;
+use std::fs::File;
+use std::io::{ Read, Write };
+
+use bytecode::generate_bytecode;
 use parser::Parser;
 use ir::IR;
 
@@ -20,5 +24,10 @@ pub fn compile(mut readable: impl Read, _options: CompilerOptions) {
 
 //  println!("Program {program:#?}");
 
-    let _intermediate = IR::from(program);
+    let intermediate = IR::from(program);
+
+    let bytecode = generate_bytecode(intermediate);
+
+    let mut file = File::create("out.nenc").unwrap();
+    file.write_all(&bytecode).unwrap();
 }

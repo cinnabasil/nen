@@ -1,12 +1,11 @@
 use std::collections::HashMap;
-use std::rc::Rc;
 use crate::parser::{ Program, Node, Expr };
 
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct IR {
     pub namespace: HashMap<String, NamespaceElement>,
-    pub constants: Vec<Rc<Constant>>
+    pub constants: Vec<Constant>
 }
 
 #[derive(Debug)]
@@ -56,7 +55,8 @@ pub enum Function {
 #[derive(Debug)]
 pub enum IRExpr {
     FunctionCall(String, Vec<IRExpr>),
-    StringLiteral(Rc<Constant>)
+    // vvv Index into IR.constants
+    StringLiteral(usize)
 }
 
 impl IR {
@@ -96,11 +96,8 @@ impl IR {
 		return IRExpr::FunctionCall(name.clone(), arguments);
 	    },
 	    Expr::StringLiteral(s) => {
-		let constant = Rc::new(Constant::StringLiteral(s.to_string()));
-
-		self.constants.push(Rc::clone(&constant));
-		
-		return IRExpr::StringLiteral(Rc::clone(&constant));
+		self.constants.push(Constant::StringLiteral(s.to_string()));
+		return IRExpr::StringLiteral(self.constants.len() - 1);
 	    },
 	    #[allow(unreachable_patterns)]
 	    _ => todo!("Unreachable!")
@@ -147,14 +144,17 @@ impl IR {
         let mut namespace = HashMap::<String, NamespaceElement>::new();
 
         // Initalize builtins here
-        namespace.insert(
-            "print".to_string(), 
-            NamespaceElement::Function(Function::BuiltIn { arguments: vec![FunctionArgument("input".to_string(), Type::String)], impure: true })
-        );
 
+	namespace.insert(
+	    String::from("print"),
+	    NamespaceElement::Function(
+		Function::BuiltIn { arguments: vec![FunctionArgument(String::from("input"), Type::String)], impure: true }
+	    )
+	);
+	
         IR {
             namespace,
-	    constants: Vec::<Rc<Constant>>::new()
+	    constants: Vec::<Constant>::new()
         }
     }
 
