@@ -36,16 +36,16 @@ impl Lexer {
             column: 0
         }
     }
-
+    
     #[inline(always)]
     fn at_end(&self) -> bool {
         self.index >= self.input.len()
     }
-
+    
     fn advance(&mut self) {
         self.index += 1;
     }
-
+    
     #[inline(always)]
     fn skip_whitespace(&mut self) {
         while !self.at_end() {
@@ -56,13 +56,13 @@ impl Lexer {
             }
         }
     }
-
+    
     #[inline(always)]
     fn tokenize_single_char(&mut self, token: Token) -> Option<Token> {
         self.advance();
         return Some(token);
     }
-
+    
     pub fn peek_token(&mut self) -> Option<Token> {
         let index = self.index;
         let token = self.next_token();
@@ -70,14 +70,14 @@ impl Lexer {
         self.index = index;
         return token;
     }
-
+    
     pub fn next_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
-
+        
         if self.at_end() {
             return None;
         }
-
+        
         let c = self.input[self.index];
         
         match c {
@@ -105,7 +105,7 @@ impl Lexer {
                     value.push(string_character);
                     self.index += 1;
                 }
-
+                
                 return Some(Token::StringLiteral(value));
             },
             '(' => return self.tokenize_single_char(Token::OpenParen),
@@ -116,9 +116,9 @@ impl Lexer {
             ';' => return self.tokenize_single_char(Token::Semicolon), 
             c => {
                 let error = SyntaxError::UnknownStartOfToken(ErrorLocation { line: self.line, column: self.column }, c);
-
+                
                 println!("{error}");
-
+                
                 std::process::exit(1);
             }
         };
