@@ -17,12 +17,12 @@ pub enum Node {
 
 pub type Block = Vec<Expr>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     FunctionCall { name: String, arguments: Vec<Statement> }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     StringLiteral(String)
 }

@@ -1,3 +1,8 @@
 impure func main() {
   print("Hello, world!");
+  example_function();
+}
+
+func example_function() {
+
 }
