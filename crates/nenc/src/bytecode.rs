@@ -1,5 +1,3 @@
-use std::thread::current;
-
 use crate::ir::{IR, Constant, NamespaceElement, Function, IRExpr};
 
 struct BytecodeGenerator {
