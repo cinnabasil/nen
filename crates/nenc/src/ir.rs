@@ -5,13 +5,13 @@ use crate::parser::{ Program, Node, Expr };
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct IR {
-    namespace: HashMap<String, NamespaceElement>,
-    constants: Vec<Rc<Constant>>
+    pub namespace: HashMap<String, NamespaceElement>,
+    pub constants: Vec<Rc<Constant>>
 }
 
 #[derive(Debug)]
 #[allow(dead_code)]
-enum Constant {
+pub enum Constant {
     StringLiteral(String)
 }
 
@@ -23,18 +23,18 @@ enum Type {
 }
 
 #[derive(Debug)]
-struct FunctionArgument (String, Type);
+pub struct FunctionArgument (String, Type);
 
 #[derive(Debug)]
 #[allow(dead_code)]
-enum NamespaceElement {
+pub enum NamespaceElement {
     Variable,
     Function(Function)
 }
 
 #[derive(Debug)]
 #[allow(dead_code)]
-enum Function {
+pub enum Function {
     UserDefined { arguments: Vec<FunctionArgument>, body: Vec<IRExpr>, impure: bool },
     // Function::BuiltIn doesn't have a `body` field as this will be filled in
     // by the compiler itself
@@ -54,7 +54,7 @@ enum Function {
 // reference into the constant 'pool' (IR.constants) rather than how it is represented
 // in crate::parser
 #[derive(Debug)]
-enum IRExpr {
+pub enum IRExpr {
     FunctionCall(String, Vec<IRExpr>),
     StringLiteral(Rc<Constant>)
 }

@@ -20,7 +20,5 @@ pub fn compile(mut readable: impl Read, _options: CompilerOptions) {
 
 //  println!("Program {program:#?}");
 
-    let intermediate = IR::from(program);
-
-    println!("{intermediate:#?}");
+    let _intermediate = IR::from(program);
 }
