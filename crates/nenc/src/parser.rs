@@ -15,7 +15,7 @@ pub enum Node {
     FunctionDefinition { name: String, contents: Block, impure: bool }
 }
 
-pub type Block = Vec<Expr>;
+pub type Block = Vec<Statement>;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -25,7 +25,7 @@ pub enum Expr {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    
+    Expr(Expr)
 }
 
 impl Parser {
@@ -47,10 +47,19 @@ impl Parser {
         todo!("Handle unexpected token");
     }
     
-    #[allow(dead_code)]
     fn parse_statement(&mut self) -> Option<Statement> {
-        match self.lexer.next_token() {
-            Some(_) => todo!("Unexpected token in parse_statement"),
+        match self.lexer.peek_token() {
+            Some(Token::Identifier(_)) => {
+                match self.lexer.peek_second_token() {
+                    Some(Token::OpenParen) => {
+                        let function_call = self.parse_expr().expect("Unreachable, I think");
+
+                        return Some(Statement::Expr(function_call));
+                    },
+                    _ => todo!()
+                }
+            },
+            Some(t) => todo!("Unexpected token {t:?} in parse_statement"),
             None => None
         }
     }
@@ -135,8 +144,8 @@ impl Parser {
                     match t {
                         Token::CloseCurly => break,
                         _ => {
-                            if let Some(e) = self.parse_expr() {
-                                block.push(e);
+                            if let Some(s) = self.parse_statement() {
+                                block.push(s);
                                 self.expect_token(Token::Semicolon, true);
                             } else {
                                 // Hit EOF or something else before close curly!

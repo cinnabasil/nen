@@ -1,191 +1,123 @@
 use std::collections::HashMap;
-use crate::parser::{ Program, Node, Expr };
 
-#[derive(Debug)]
+use crate::parser::{ Node, Program, Expr, Statement };
+
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct IR {
-	pub namespace: HashMap<String, NamespaceElement>,
-	pub constants: Vec<Constant>
+    scope: Vec<HashMap<String, ScopeElement>>
 }
 
-#[derive(Debug)]
 #[allow(dead_code)]
-pub enum Constant {
-	StringLiteral(String)
+#[derive(Debug, Clone)]
+enum ScopeElement {
+   Function(Vec<Instruction>),
+   Variable
 }
 
-#[derive(Debug)]
-#[allow(dead_code)]
-enum Type {
-	Void,
-	String
-}
-
-#[derive(Debug)]
-pub struct FunctionArgument (String, Type);
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub enum NamespaceElement {
-	Variable,
-	Function(Function)
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub enum Function {
-	UserDefined { arguments: Vec<FunctionArgument>, body: Vec<IRExpr>, impure: bool },
-	// Function::BuiltIn doesn't have a `body` field as this will be filled in
-	// by the compiler itself
-	BuiltIn { arguments: Vec<FunctionArgument>, impure: bool },
-	// Function::ToBeDefined is used for functions that are called before they
-	// are defined, allowing for definitions later in code than the reference
-	// to them.
-	// If any functions are still Function::ToBeDefined at the end of IR generation,
-	// a reference error will be returned
-	ToBeDefined { argument_count: usize }
-}
-
-// We have different types here than the AST (see crate::parser::Expr vs IRExpr)
-// because these need to carry more detailed information
-
-// For example, a function call containing a string literal would actually be a
-// reference into the constant 'pool' (IR.constants) rather than how it is represented
-// in crate::parser
-#[derive(Debug)]
-pub enum IRExpr {
-	FunctionCall(String, Vec<IRExpr>),
-	// vvv Index into IR.constants
-	StringLiteral(usize)
+#[derive(Debug, Clone)]
+enum Instruction {
+    PushString(String),
+    Call(String)
 }
 
 impl IR {
-	fn handle_expr(&mut self, expr: &Expr) -> IRExpr {
-		match expr {
-			Expr::FunctionCall { name, arguments: ast_arguments } => {
-				// Check if function exists
-				if let Some(defined) = self.namespace.get(name) {
-					match defined {
-						NamespaceElement::Variable => todo!("Can't call a variable"),
-						// If it's a function, great!
-						NamespaceElement::Function(f) => {
-							match f {
-								Function::ToBeDefined { argument_count } => {
-									if *argument_count != ast_arguments.len() {
-										todo!("Wrong number of arguments to function {name}");
-									}
-								},
-								Function::BuiltIn { arguments, impure: _ } | Function::UserDefined { arguments, body: _, impure: _ } => {
-									if arguments.len() != ast_arguments.len() {
-										todo!("Wrong number of arguments to function {name}");
-									}
-								}
-							}
-						}
-					}
-				} else {
-					self.namespace.insert(name.clone(), NamespaceElement::Function(Function::ToBeDefined { argument_count: ast_arguments.len() }));
-				}
-				
-				let mut arguments = Vec::<IRExpr>::new();
-				
-				for argument in ast_arguments.iter() {
-					arguments.push(self.handle_expr(argument));
-				}
-				
-				return IRExpr::FunctionCall(name.clone(), arguments);
-			},
-			Expr::StringLiteral(s) => {
-				self.constants.push(Constant::StringLiteral(s.to_string()));
-				return IRExpr::StringLiteral(self.constants.len() - 1);
-			},
-			#[allow(unreachable_patterns)]
-			_ => todo!("Unreachable!")
-		}
-	}
-	
-	fn handle_node(&mut self, node: &Node) {
-		match node {
-			Node::FunctionDefinition { name, contents, impure } => {
-				if let Some(defined) = self.namespace.get(name) {
-					match defined {
-						NamespaceElement::Variable => todo!("Tried to declare function with name of variable that exists"),
-						NamespaceElement::Function(function) => {
-							match function {
-								// If the function has been referenced before, then we don't care that it is technically
-								// in the namespace, as this is expected
-								Function::ToBeDefined { argument_count: _ } => {},
-								_ => todo!("Function {name} already defined!")
-							};
-						}
-					}
-				}
-				
-				let mut body = Vec::<IRExpr>::new();
-				
-				for expr in contents.iter() {
-					body.push(self.handle_expr(expr));
-				}
-				
-				self.namespace.insert(name.to_string(), NamespaceElement::Function(
-					Function::UserDefined {
-						arguments: Vec::<FunctionArgument>::new(),
-						body,
-						impure: impure.clone()
-					}
-				));
-			},
-			#[allow(unreachable_patterns)]
-			_ => todo!("Unreachable!")
-		}
-	}
-	
-	pub fn new() -> IR {
-		let mut namespace = HashMap::<String, NamespaceElement>::new();
-		
-		// Initalize builtins here
-		
-		namespace.insert(
-			String::from("print"),
-			NamespaceElement::Function(
-				Function::BuiltIn { arguments: vec![FunctionArgument(String::from("input"), Type::String)], impure: true }
-			)
-		);
-		
-		IR {
-			namespace,
-			constants: Vec::<Constant>::new()
-		}
-	}
-	
-	fn error_check(&mut self) {
-		// Check for any undefined functions
-		for (name, val) in self.namespace.iter() {
-			match val {
-				NamespaceElement::Variable => continue,
-				NamespaceElement::Function(function) => {
-					match function {
-						Function::ToBeDefined { argument_count: _ } =>
-						todo!("Function {name} was called, but is not defined anywhere"),
-						_ => continue
-					}
-				}
-			}
-		}
-	}
+    // TODO: Maybe rewrite this without `clone` at some point?
+    fn get_from_scope(&mut self, name: &str) -> Option<ScopeElement> {
+        for s in &self.scope {
+            if let Some(element) = s.get(name) { 
+                return Some(element.clone());
+            }
+        }
+        None
+    }
+
+    fn add_to_scope(&mut self, name: &str, element: ScopeElement) {
+        let mut scope = self.scope.pop().expect("Should always have at least one scope");
+        scope.insert(name.to_string(), element);
+        self.scope.push(scope);
+    }
+
+    fn handle_expression(&mut self, expression: Expr) -> Vec<Instruction> {
+        let mut instructions = Vec::<Instruction>::new();
+        
+        match expression {
+            Expr::FunctionCall { name, arguments } => {
+                for argument in arguments {
+                    instructions.extend(self.handle_expression(argument));
+                } 
+
+                match self.get_from_scope(&name) {
+                    Some(ScopeElement::Function(_)) => {},
+                    Some(ScopeElement::Variable) => todo!("Tried to call variable"),
+                    //None => todo!("Call to undefined function {name}")
+                    None => {}
+                }
+                
+                instructions.push(Instruction::Call(name));
+            },
+            Expr::StringLiteral(s) => {
+                instructions.push(Instruction::PushString(s));
+            }
+        }
+
+        instructions
+    }
+
+    fn handle_statement(&mut self, statement: Statement) -> Vec<Instruction> {
+        let mut instructions = Vec::<Instruction>::new();
+
+        match statement {
+            Statement::Expr(e) => {
+                instructions.extend(self.handle_expression(e));
+            }
+        }
+
+        instructions
+    }
+
+    fn handle_function_body(&mut self, contents: Vec<Statement>) -> Vec<Instruction> {
+        let mut instructions = Vec::<Instruction>::new();
+
+        for statement in contents {
+            instructions.extend(self.handle_statement(statement));
+        }
+
+        instructions
+    }
+
+    fn handle_node(&mut self, node: Node) {
+        match node {
+            Node::FunctionDefinition { name, contents, impure: _ } => {
+                if let Some(element) = self.get_from_scope(&name) {
+                    match element {
+                        ScopeElement::Function(_) => todo!("Function {name} already defined"),
+                        ScopeElement::Variable => todo!("Function {name} already defined as a variable") 
+                    }
+                }
+
+                let body = self.handle_function_body(contents);
+
+                let function = ScopeElement::Function(body); 
+
+                self.add_to_scope(&name, function); 
+            }
+        }
+    }
 }
 
 impl From<Program> for IR {
-	fn from(program: Program) -> Self {
-		let mut iter = program.iter();
-		let mut ir = IR::new();
-		
-		while let Some(node) = iter.next() {
-			ir.handle_node(node);
-		}
-		
-		ir.error_check();
-		
-		ir
-	}
+    fn from(program: Program) -> IR {
+        let mut scope = Vec::<HashMap<String, ScopeElement>>::new();
+        scope.push(HashMap::<String, ScopeElement>::new());
+        let mut ir = IR {
+            scope
+        };
+
+        for node in program {
+            ir.handle_node(node);
+        }
+
+        ir
+    }
 }

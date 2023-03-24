@@ -70,6 +70,14 @@ impl Lexer {
         self.index = index;
         return token;
     }
+
+    pub fn peek_second_token(&mut self) -> Option<Token> {
+        let index = self.index;
+        self.next_token();
+        let token = self.next_token();
+        self.index = index;
+        return token;
+    }
     
     pub fn next_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
