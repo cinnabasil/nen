@@ -1,0 +1,6 @@
+[package]
+name = "nenc_interpreter"
+version = "0.0.1"
+description = "Nenc Interpreter."
+
+[dependencies]

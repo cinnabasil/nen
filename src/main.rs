@@ -1,4 +1,5 @@
 extern crate nenc;
+extern crate nenc_interpreter;
 
 use std::{ env, path::PathBuf, process::exit, fs::File };
 
@@ -6,7 +7,15 @@ const RED: &str = "\u{001b}[91m";
 const RESET: &str = "\u{001b}[0m";
 
 #[derive(Default)]
+enum CliAction {
+    #[default]
+    Compile,
+    Interpret
+}
+
+#[derive(Default)]
 struct CliOptions {
+    action: CliAction,
     input_file: String
 }
 
@@ -20,7 +29,12 @@ fn parse_arguments() -> CliOptions {
         idx += 1;
 
         if arg.starts_with("-") {
-            todo!("Flags");
+            match arg.as_str() {
+                "-i" | "--interpret" => {
+                    options.action = CliAction::Interpret;
+                }, 
+                _ => todo!("Unknown flag")
+            }
         } else {
             options.input_file = arg.to_string();
         }
@@ -36,7 +50,7 @@ fn main() {
         eprintln!("{RED}ERROR{RESET} No input file was provided.");
         exit(1);
     }
-    
+
     let path = PathBuf::from(&options.input_file);
     let file = match File::open(path) {
         Ok(f) => f,
@@ -46,5 +60,10 @@ fn main() {
         }
     };
 
-    nenc::compile(file, nenc::CompilerOptions {});
+    match options.action {
+        CliAction::Compile => 
+            nenc::compile(file, nenc::CompilerOptions {}),
+        CliAction::Interpret =>
+            nenc_interpreter::interpret(file)
+    };
 }

@@ -7,8 +7,13 @@ name = "nen"
 version = "0.0.1"
 dependencies = [
  "nenc",
+ "nenc_interpreter",
 ]
 
 [[package]]
 name = "nenc"
+version = "0.0.1"
+
+[[package]]
+name = "nenc_interpreter"
 version = "0.0.1"

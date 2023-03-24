@@ -1,4 +1,0 @@
-impure func print(input: string) {
-       _stack_push_str(input);
-       _extern_call("printf");
-}

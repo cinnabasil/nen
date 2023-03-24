@@ -5,12 +5,12 @@ use crate::parser::{ Node, Program, Expr, Statement };
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct IR {
-    scope: Vec<HashMap<String, ScopeElement>>
+    pub scope: Vec<HashMap<String, ScopeElement>>
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-enum ScopeElement {
+pub enum ScopeElement {
     Function(Vec<Instruction>),
     // PlaceholderFunction is when a function is called,
     // but it is not defined yet.
@@ -23,9 +23,10 @@ enum ScopeElement {
 }
 
 #[derive(Debug, Clone)]
-enum Instruction {
+pub enum Instruction {
     PushString(String),
-    Call(String)
+    Call(String),
+    Write
 }
 
 impl IR {

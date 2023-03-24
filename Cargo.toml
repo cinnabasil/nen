@@ -5,6 +5,7 @@ description = "Nen compiler command-line interface."
 
 [dependencies]
 nenc = { path = "crates/nenc" }
+nenc_interpreter = { path = "crates/nenc_interpreter" }
 
 [workspace]
-members = [ "crates/nenc" ]
+members = [ "crates/nenc", "crates/nenc_interpreter" ]
