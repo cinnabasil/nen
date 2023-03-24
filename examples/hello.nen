@@ -1,4 +1,4 @@
 impure func main() {
-  print("Hello, world!");
-  print("Other text!");
+  print("This is all ");
+  println("on one line!");
 }

@@ -70,7 +70,7 @@ pub fn ir_bytecode(mut ir: IR) -> Vec<u8> {
                                 name_len, 
                                 name.as_bytes(), 
                                 body_len, 
-                                b
+                                &b
                             ].concat();
 
                             bytecode.extend(function_bytecode);

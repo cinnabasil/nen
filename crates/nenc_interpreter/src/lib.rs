@@ -152,7 +152,7 @@ impl Interpreter {
             Instruction::PushString(s) => self.stack.push(StackElement::String(s.to_string())),
             Instruction::Write => {
                 match self.stack.pop() {
-                    Some(StackElement::String(s)) => println!("{s}"),
+                    Some(StackElement::String(s)) => print!("{s}"),
                     None => panic!("Stack underflow @ write instruction")
                 }
             }

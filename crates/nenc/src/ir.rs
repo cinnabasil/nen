@@ -138,6 +138,7 @@ impl From<Program> for IR {
         // Define built-ins
 
         top_scope.insert("print".to_string(), ScopeElement::BuiltInFunction);
+        top_scope.insert("println".to_string(), ScopeElement::BuiltInFunction);
 
         scope.push(top_scope);
         let mut ir = IR {
