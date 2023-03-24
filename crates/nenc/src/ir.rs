@@ -11,8 +11,15 @@ pub struct IR {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum ScopeElement {
-   Function(Vec<Instruction>),
-   Variable
+    Function(Vec<Instruction>),
+    // PlaceholderFunction is when a function is called,
+    // but it is not defined yet.
+    // 
+    // We need this so that we can define functions later in
+    // code than where they are called.
+    PlaceholderFunction,
+    BuiltInFunction,
+    Variable
 }
 
 #[derive(Debug, Clone)]
@@ -23,10 +30,10 @@ enum Instruction {
 
 impl IR {
     // TODO: Maybe rewrite this without `clone` at some point?
-    fn get_from_scope(&mut self, name: &str) -> Option<ScopeElement> {
-        for s in &self.scope {
+    fn get_from_scope(&mut self, name: &str) -> Option<(usize, ScopeElement)> {
+        for (i, s) in self.scope.iter().enumerate() {
             if let Some(element) = s.get(name) { 
-                return Some(element.clone());
+                return Some((i, element.clone()));
             }
         }
         None
@@ -48,10 +55,13 @@ impl IR {
                 } 
 
                 match self.get_from_scope(&name) {
-                    Some(ScopeElement::Function(_)) => {},
-                    Some(ScopeElement::Variable) => todo!("Tried to call variable"),
-                    //None => todo!("Call to undefined function {name}")
-                    None => {}
+                    Some((_, ScopeElement::Function(_))) => {},
+                    Some((_, ScopeElement::PlaceholderFunction)) => {},
+                    Some((_, ScopeElement::BuiltInFunction)) => {},
+                    Some((_, ScopeElement::Variable)) => todo!("Tried to call variable"),
+                    None => {
+                        self.add_to_scope(&name, ScopeElement::PlaceholderFunction);
+                    }
                 }
                 
                 instructions.push(Instruction::Call(name));
@@ -91,14 +101,26 @@ impl IR {
             Node::FunctionDefinition { name, contents, impure: _ } => {
                 if let Some(element) = self.get_from_scope(&name) {
                     match element {
-                        ScopeElement::Function(_) => todo!("Function {name} already defined"),
-                        ScopeElement::Variable => todo!("Function {name} already defined as a variable") 
+                        (_, ScopeElement::Function(_)) => todo!("Function {name} already defined"),
+                        (_, ScopeElement::PlaceholderFunction) => {},
+                        (_, ScopeElement::BuiltInFunction) => {
+                            todo!("Function {name} defined as built-in - We need to decide if we want to allow overwriting of built-in functions");
+                        },
+                        (_, ScopeElement::Variable) => todo!("Function {name} already defined as a variable") 
                     }
                 }
 
                 let body = self.handle_function_body(contents);
 
                 let function = ScopeElement::Function(body); 
+
+                // Functions can only be defined in the top level
+                // meaning that we should only have one scope active
+                // but we check just in case
+                
+                if self.scope.len() > 1 {
+                    panic!("Functions can only be defined at the top level");
+                }
 
                 self.add_to_scope(&name, function); 
             }
@@ -109,7 +131,14 @@ impl IR {
 impl From<Program> for IR {
     fn from(program: Program) -> IR {
         let mut scope = Vec::<HashMap<String, ScopeElement>>::new();
-        scope.push(HashMap::<String, ScopeElement>::new());
+        let mut top_scope = HashMap::<String, ScopeElement>::new();
+
+        
+        // Define built-ins
+
+        top_scope.insert("print".to_string(), ScopeElement::BuiltInFunction);
+
+        scope.push(top_scope);
         let mut ir = IR {
             scope
         };

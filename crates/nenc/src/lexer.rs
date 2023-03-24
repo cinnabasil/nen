@@ -27,6 +27,7 @@ pub enum TokenKind {
     Semicolon
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Token {
     line: usize,
