@@ -15,7 +15,7 @@ pub enum Keyword {
 }
 
 #[derive(Debug)]
-pub enum Token {
+pub enum TokenKind {
     Identifier(String),
     Keyword(Keyword),
     StringLiteral(String),
@@ -25,6 +25,23 @@ pub enum Token {
     CloseCurly,
     Comma,
     Semicolon
+}
+
+#[derive(Debug)]
+pub struct Token {
+    line: usize,
+    column: usize,
+    pub kind: TokenKind
+}
+
+impl Token {
+    pub fn new(line: usize, column: usize, kind: TokenKind) -> Self {
+        Token {
+            line,
+            column,
+            kind
+        }
+    }
 }
 
 impl Lexer {
@@ -44,12 +61,22 @@ impl Lexer {
     
     fn advance(&mut self) {
         self.index += 1;
+        self.column += 1;
     }
     
     #[inline(always)]
     fn skip_whitespace(&mut self) {
         while !self.at_end() {
             if self.input[self.index].is_whitespace() {
+                match self.input[self.index] {
+                    '\n' => {
+                        self.line += 1;
+                        self.column = 0;
+                    }, 
+                    _ => {
+                        self.column += 1
+                    }
+                };
                 self.index += 1;
             } else {
                 break;
@@ -58,24 +85,33 @@ impl Lexer {
     }
     
     #[inline(always)]
-    fn tokenize_single_char(&mut self, token: Token) -> Option<Token> {
+    fn tokenize_single_char(&mut self, kind: TokenKind) -> Option<Token> {
+        let token = Token::new(self.line, self.column, kind);
         self.advance();
         return Some(token);
     }
     
     pub fn peek_token(&mut self) -> Option<Token> {
         let index = self.index;
+        let line = self.line;
+        let column = self.column;
         let token = self.next_token();
         // Reset position
         self.index = index;
+        self.line = line;
+        self.column = column;
         return token;
     }
 
     pub fn peek_second_token(&mut self) -> Option<Token> {
         let index = self.index;
+        let line = self.line;
+        let column = self.column;
         self.next_token();
         let token = self.next_token();
         self.index = index;
+        self.line = line;
+        self.column = column;
         return token;
     }
     
@@ -90,38 +126,44 @@ impl Lexer {
         
         match c {
             c if c.is_ascii_alphabetic() || c == '_' => {
+                let line = self.line;
+                let column = self.column;
+
                 let mut value = String::new();
                 while !self.at_end() && (self.input[self.index].is_ascii_alphanumeric() || self.input[self.index] == '_') {
                     value.push(self.input[self.index]);
-                    self.index += 1;
+                    self.advance();
                 }
                 return match value.as_str() {
-                    "func" => Some(Token::Keyword(Keyword::Func)),
-                    "impure" => Some(Token::Keyword(Keyword::Impure)),
-                    _ => Some(Token::Identifier(value))
+                    "func" => Some(Token::new(line, column, TokenKind::Keyword(Keyword::Func))),
+                    "impure" => Some(Token::new(line, column, TokenKind::Keyword(Keyword::Impure))),
+                    _ => Some(Token::new(line, column, TokenKind::Identifier(value)))
                 };
             },
             '"' | '\'' => {
+                let line = self.line;
+                let column = self.column;
+
                 let mut value = String::new();
-                self.index += 1;
+                self.advance();
                 while !self.at_end() {
                     let string_character = self.input[self.index];
                     if string_character == c {
-                        self.index += 1;
+                        self.advance();
                         break;
                     }
                     value.push(string_character);
-                    self.index += 1;
+                    self.advance();
                 }
                 
-                return Some(Token::StringLiteral(value));
+                return Some(Token::new(line, column, TokenKind::StringLiteral(value)));
             },
-            '(' => return self.tokenize_single_char(Token::OpenParen),
-            ')' => return self.tokenize_single_char(Token::CloseParen),
-            '{' => return self.tokenize_single_char(Token::OpenCurly),
-            '}' => return self.tokenize_single_char(Token::CloseCurly),
-            ',' => return self.tokenize_single_char(Token::Comma),
-            ';' => return self.tokenize_single_char(Token::Semicolon), 
+            '(' => return self.tokenize_single_char(TokenKind::OpenParen),
+            ')' => return self.tokenize_single_char(TokenKind::CloseParen),
+            '{' => return self.tokenize_single_char(TokenKind::OpenCurly),
+            '}' => return self.tokenize_single_char(TokenKind::CloseCurly),
+            ',' => return self.tokenize_single_char(TokenKind::Comma),
+            ';' => return self.tokenize_single_char(TokenKind::Semicolon), 
             c => {
                 let error = SyntaxError::UnknownStartOfToken(ErrorLocation { line: self.line, column: self.column }, c);
                 

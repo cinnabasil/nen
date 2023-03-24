@@ -1,6 +1,6 @@
 use std::mem::discriminant;
 
-use lexer::{Lexer, Token, Keyword};
+use lexer::{Lexer, Token, TokenKind, Keyword};
 
 #[derive(Debug)]
 pub struct Parser {
@@ -36,10 +36,10 @@ impl Parser {
     }
     
     #[inline(always)]
-    fn expect_token(&mut self, token: Token, consume: bool) -> Token {
+    fn expect_token(&mut self, token: TokenKind, consume: bool) -> Token {
         let next = if consume { self.lexer.next_token() } else { self.lexer.peek_token() };
         if let Some(n) = next {
-            if discriminant(&n) == discriminant(&token) {
+            if discriminant(&n.kind) == discriminant(&token) {
                 return n;
             }
         }
@@ -49,17 +49,25 @@ impl Parser {
     
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.lexer.peek_token() {
-            Some(Token::Identifier(_)) => {
-                match self.lexer.peek_second_token() {
-                    Some(Token::OpenParen) => {
-                        let function_call = self.parse_expr().expect("Unreachable, I think");
+            Some(token) => {
+                match token.kind {
+                    TokenKind::Identifier(_) => {
+                        if let Some(t) = self.lexer.peek_second_token() {
+                            match t.kind {
+                                TokenKind::OpenParen => {
+                                    let function_call = self.parse_expr().expect("Unreachable, I think");
 
-                        return Some(Statement::Expr(function_call));
+                                    return Some(Statement::Expr(function_call));
+                                },
+                                _ => todo!()
+                            }
+                        } else {
+                            todo!()
+                        }
                     },
-                    _ => todo!()
+                    t => todo!("Unexpected token {t:?} in parse_statement"),
                 }
-            },
-            Some(t) => todo!("Unexpected token {t:?} in parse_statement"),
+            }
             None => None
         }
     }
@@ -67,105 +75,122 @@ impl Parser {
     fn parse_expr(&mut self) -> Option<Expr> {
         // Only function calls for now
         match self.lexer.next_token() {
-            Some(Token::StringLiteral(s)) => {
-                Some(Expr::StringLiteral(s))
-            },
-            Some(Token::Identifier(s)) => {
-                match self.lexer.peek_token() {
-                    Some(Token::OpenParen) => {
-                        self.lexer.next_token();
-                        let mut args = Vec::<Expr>::new();
-                        while let Some(tk) = self.lexer.peek_token() {
-                            match tk {
-                                Token::CloseParen => break,
-                                _ => {
-                                    if let Some(s) = self.parse_expr() {
-                                        args.push(s);
-                                    } else {
-                                        // Hit EOF or something else before close bracket!
-                                        todo!("Handle unclosed function call");
-                                    }
-                                    
-                                    match self.lexer.peek_token() {
-                                        Some(Token::CloseParen) => break,
-                                        Some(Token::Comma) => self.lexer.next_token(),
-                                        _ => todo!("Unexpected token after func call arg")
-                                    };
+            Some(token) => {
+                match token.kind {
+                    TokenKind::StringLiteral(s) => {
+                        Some(Expr::StringLiteral(s))
+                    },
+                    TokenKind::Identifier(s) => {
+                        match self.lexer.peek_token() {
+                            Some(peeked_token) => {
+                                match peeked_token.kind {
+                                    TokenKind::OpenParen => {
+                                        self.lexer.next_token();
+                                        let mut args = Vec::<Expr>::new();
+                                        while let Some(tk) = self.lexer.peek_token() {
+                                            match tk.kind {
+                                                TokenKind::CloseParen => break,
+                                                _ => {
+                                                    if let Some(s) = self.parse_expr() {
+                                                        args.push(s);
+                                                    } else {
+                                                        // Hit EOF or something else before close bracket!
+                                                        todo!("Handle unclosed function call");
+                                                    }
+                                                    
+                                                    match self.lexer.peek_token() {
+                                                        Some(token) => {
+                                                            match token.kind {
+                                                                TokenKind::CloseParen => break,
+                                                                TokenKind::Comma => self.lexer.next_token(),
+                                                                _ => todo!("Unexpected token after func call arg")
+                                                            }
+                                                        },
+                                                        None => todo!("EOF before close of call")
+                                                    };
+                                                }
+                                            };
+                                        }
+                                        
+                                        self.expect_token(TokenKind::CloseParen, true);
+                                        
+                                        Some(Expr::FunctionCall {
+                                            name: s,
+                                            arguments: args
+                                        })
+                                    },
+                                    k => {
+                                        todo!("Unexpected token {k:?} in parse_expr after ident");
+                                    },
                                 }
-                            };
+                            },
+                            None => {
+                                todo!("Handle identifier by itself with nothing after it");
+                            }
                         }
-                        
-                        self.expect_token(Token::CloseParen, true);
-                        
-                        Some(Expr::FunctionCall {
-                            name: s,
-                            arguments: args
-                        })
                     },
-                    Some(_) => {
-                        todo!("Unexpected token in parse_expr after ident");
+                    k => {
+                        todo!("Unexpected token {k:?}"); 
                     },
-                    None => {
-                        todo!("Handle identifier by itself with nothing after it");
-                    }
                 }
             },
-            Some(_) => {
-                todo!("Unexpected token in parse_expr"); 
-            },
-            None => None    
+            None => None
         }
     }
     
     fn parse_node(&mut self) -> Option<Node> {
         // Only option is a function definition (for now)
         match self.lexer.peek_token() {
-            Some(Token::Keyword(Keyword::Impure)) => {
-                self.lexer.next_token();
-                match self.parse_node() {
-                    Some(Node::FunctionDefinition { name, contents, impure: _ }) => {
-                        Some(Node::FunctionDefinition { name, contents, impure: true })
+            Some(token) => {
+                match token.kind {
+                    TokenKind::Keyword(Keyword::Impure) => {
+                        self.lexer.next_token();
+                        match self.parse_node() {
+                            Some(Node::FunctionDefinition { name, contents, impure: _ }) => {
+                                Some(Node::FunctionDefinition { name, contents, impure: true })
+                            },
+                            #[allow(unreachable_patterns)]
+                            Some(_) => todo!("Unexpected token after impure"),
+                            None => todo!("Impure by itself!")
+                        }
                     },
-                    #[allow(unreachable_patterns)]
-                    Some(_) => todo!("Unexpected token after impure"),
-                    None => todo!("Impure by itself!")
-                }
-            },
-            Some(Token::Keyword(Keyword::Func)) => {
-                self.lexer.next_token();
-                let name = self.expect_token(Token::Identifier(String::new()), true);
-                self.expect_token(Token::OpenParen, true);
-                self.expect_token(Token::CloseParen, true);
-                self.expect_token(Token::OpenCurly, true);
-                
-                let mut block = Block::new();
-                
-                while let Some(t) = self.lexer.peek_token() {
-                    match t {
-                        Token::CloseCurly => break,
-                        _ => {
-                            if let Some(s) = self.parse_statement() {
-                                block.push(s);
-                                self.expect_token(Token::Semicolon, true);
-                            } else {
-                                // Hit EOF or something else before close curly!
-                                todo!("Handle unclosed function definition");
+                    TokenKind::Keyword(Keyword::Func) => {
+                        self.lexer.next_token();
+                        let name = self.expect_token(TokenKind::Identifier(String::new()), true);
+                        self.expect_token(TokenKind::OpenParen, true);
+                        self.expect_token(TokenKind::CloseParen, true);
+                        self.expect_token(TokenKind::OpenCurly, true);
+                        
+                        let mut block = Block::new();
+                        
+                        while let Some(t) = self.lexer.peek_token() {
+                            match t.kind {
+                                TokenKind::CloseCurly => break,
+                                _ => {
+                                    if let Some(s) = self.parse_statement() {
+                                        block.push(s);
+                                        self.expect_token(TokenKind::Semicolon, true);
+                                    } else {
+                                        // Hit EOF or something else before close curly!
+                                        todo!("Handle unclosed function definition");
+                                    }
+                                }
                             }
                         }
-                    }
+                        
+                        self.expect_token(TokenKind::CloseCurly, true);
+                        
+                        if let TokenKind::Identifier(n) = name.kind {
+                            Some(Node::FunctionDefinition { name: n, contents: block, impure: false })
+                        } else {
+                            todo!("Unreachable!");
+                        }
+                    },
+                    k => {
+                        // TODO: Proper errors
+                        todo!("Unexpected token {k:?} in parse_node");
+                    },
                 }
-                
-                self.expect_token(Token::CloseCurly, true);
-                
-                if let Token::Identifier(n) = name {
-                    Some(Node::FunctionDefinition { name: n, contents: block, impure: false })
-                } else {
-                    todo!("Unreachable!");
-                }
-            },
-            Some(_) => {
-                // TODO: Proper errors
-                todo!("Unexpected token: parse_node");
             },
             None => None
         }
