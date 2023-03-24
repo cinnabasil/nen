@@ -24,6 +24,12 @@ The binary, which will be generated in the `target/release/` directory, can be r
 ./target/release/nenc examples/hello.nen
 ```
 
+This will compile your `nen` source into a `out.nenc` file, which can be run with the following command:
+
+```bash
+./target/release/nenc --interpret out.nenc
+```
+
 ## Examples
 
 __nen__ comes with several example programs to help you understand the language and try it out. These can be found in the `examples/` directory.
