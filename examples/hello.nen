@@ -1,3 +1,6 @@
 impure func main() {
   print("Hello, world!");
+  other_function();
 }
+
+

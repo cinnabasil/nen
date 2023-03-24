@@ -147,6 +147,24 @@ impl From<Program> for IR {
             ir.handle_node(node);
         }
 
+        // Check for any placeholder functions left
+        let map = ir.scope.pop().expect("Should have a scope");
+        let mut placeholder_functions = Vec::<String>::new();
+        for (name, element) in &map {
+            match element {
+                ScopeElement::PlaceholderFunction => placeholder_functions.push(name.to_string()),
+                _ => {}
+            } 
+        }
+
+        if placeholder_functions.len() > 0 {
+            for func in placeholder_functions {
+                eprintln!("ERROR: Function {func} was called, but not defined.");
+            }
+            std::process::exit(1);
+        }
+        ir.scope.push(map);
+
         ir
     }
 }
