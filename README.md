@@ -21,13 +21,13 @@ $ cargo build --release
 The binary, which will be generated in the `target/release/` directory, can be run using the following command:
 
 ```bash
-./target/release/nenc examples/hello.nen
+./target/release/nen examples/hello.nen
 ```
 
 This will compile your `nen` source into a `out.nenc` file, which can be run with the following command:
 
 ```bash
-./target/release/nenc --interpret out.nenc
+./target/release/nen --interpret out.nenc
 ```
 
 ## Examples
